@@ -75,7 +75,7 @@ if __name__ == '__main__':
       'this key, as bytes list feature, with only one entry, '
       'containing quantized feature string.')
   flags.DEFINE_string(
-      'video_file_feature_key', 'video_id',
+      'video_file_feature_key', 'id',
       'Input <video_file> will be written to context feature '
       'with this key, as bytes list feature, with only one '
       'entry, containing the file path of the video. This '
