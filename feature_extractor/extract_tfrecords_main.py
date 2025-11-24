@@ -32,8 +32,10 @@ import cv2
 import feature_extractor
 import numpy
 import tensorflow as tf
-from tensorflow import app
-from tensorflow import flags
+# from tensorflow import app
+# from tensorflow import flags
+app = tf.compat.v1.app
+flags = tf.compat.v1.flags
 
 FLAGS = flags.FLAGS
 
