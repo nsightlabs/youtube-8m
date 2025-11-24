@@ -34,6 +34,7 @@ import numpy
 import tensorflow as tf
 # from tensorflow import app
 # from tensorflow import flags
+from tqdm import tqdm
 app = tf.compat.v1.app
 flags = tf.compat.v1.flags
 
@@ -152,7 +153,10 @@ def main(unused_argv):
   writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
   total_written = 0
   total_error = 0
-  for video_file, labels in csv.reader(open(FLAGS.input_videos_csv)):
+  
+  with open(FLAGS.input_videos_csv) as f:
+    csv_lines = list(csv.reader(f))
+  for video_file, labels in tqdm(csv_lines, desc="Processing videos"):
     rgb_features = []
     sum_rgb_features = None
     for rgb in frame_iterator(
