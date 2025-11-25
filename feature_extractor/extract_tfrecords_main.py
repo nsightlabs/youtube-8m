@@ -38,6 +38,7 @@ import tensorflow as tf
 from tqdm import tqdm
 app = tf.compat.v1.app
 flags = tf.compat.v1.flags
+logging = tf.compat.v1.logging
 
 FLAGS = flags.FLAGS
 
@@ -169,9 +170,10 @@ def main(unused_argv):
       if FLAGS.polygon is not None:        
         height, width = rgb.shape[:2]
         polygon_coords = list(map(float, FLAGS.polygon.split()))
+        logging.info(rgb.shape)
+        logging.info(polygon_coords)
         polygon = np.array(polygon_coords, dtype=np.int32).reshape((-1, 1, 2))
-        print(rgb.shape)
-        print(polygon, end='\n\n')
+        
         mask = np.zeros((height, width), dtype=np.uint8)
         cv2.fillPoly(mask, [polygon], 1)
         mask_3c = np.stack([mask]*3, axis=-1)
