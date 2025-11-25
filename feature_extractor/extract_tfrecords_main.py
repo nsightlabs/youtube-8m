@@ -31,6 +31,7 @@ import sys
 import cv2
 import feature_extractor
 import numpy
+import numpy as np
 import tensorflow as tf
 # from tensorflow import app
 # from tensorflow import flags
@@ -49,6 +50,9 @@ if __name__ == '__main__':
   flags.DEFINE_string(
       'output_tfrecords_file', None,
       'File containing tfrecords will be written at this path.')
+  flags.DEFINE_string(
+      'polygon', None,
+      'String containing polygon used to create region of interest')
   flags.DEFINE_string(
       'input_videos_csv', None,
       'CSV file with lines "<video_file>,<labels>", where '
@@ -161,6 +165,18 @@ def main(unused_argv):
     sum_rgb_features = None
     for rgb in frame_iterator(
         video_file, every_ms=1000.0 / FLAGS.frames_per_second):
+      
+      if FLAGS.polygon is not None:
+        print(rgb.shape)
+        print(polygon, end='\n\n')
+        height, width = rgb.shape[:2]
+        polygon_coords = list(map(float, FLAGS.polygon.split()))
+        polygon = np.array(polygon_coords, dtype=np.int32).reshape((-1, 1, 2))
+        mask = np.zeros((height, width), dtype=np.uint8)
+        cv2.fillPoly(mask, [polygon], 1)
+        mask_3c = np.stack([mask]*3, axis=-1)
+        rgb = rgb * mask_3c
+        
       features = extractor.extract_rgb_frame_features(rgb[:, :, ::-1])
       if sum_rgb_features is None:
         sum_rgb_features = features
