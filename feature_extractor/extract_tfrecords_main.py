@@ -166,12 +166,12 @@ def main(unused_argv):
     for rgb in frame_iterator(
         video_file, every_ms=1000.0 / FLAGS.frames_per_second):
       
-      if FLAGS.polygon is not None:
-        print(rgb.shape)
-        print(polygon, end='\n\n')
+      if FLAGS.polygon is not None:        
         height, width = rgb.shape[:2]
         polygon_coords = list(map(float, FLAGS.polygon.split()))
         polygon = np.array(polygon_coords, dtype=np.int32).reshape((-1, 1, 2))
+        print(rgb.shape)
+        print(polygon, end='\n\n')
         mask = np.zeros((height, width), dtype=np.uint8)
         cv2.fillPoly(mask, [polygon], 1)
         mask_3c = np.stack([mask]*3, axis=-1)
