@@ -171,7 +171,7 @@ def main(unused_argv):
         height, width = rgb.shape[:2]
         polygon_coords = list(map(float, FLAGS.polygon.split()))
         logging.info(rgb.shape)
-        logging.info(polygon_coords)
+        logging.info(FLAGS.polygon)
         polygon = np.array(polygon_coords, dtype=np.int32).reshape((-1, 1, 2))
         
         mask = np.zeros((height, width), dtype=np.uint8)
