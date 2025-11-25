@@ -170,10 +170,7 @@ def main(unused_argv):
       if FLAGS.polygon is not None:        
         height, width = rgb.shape[:2]
         polygon_coords = list(map(float, FLAGS.polygon.split()))
-        logging.info(rgb.shape)
-        logging.info(FLAGS.polygon)
-        polygon = np.array(polygon_coords, dtype=np.int32).reshape((-1, 1, 2))
-        
+        polygon = np.array(polygon_coords, dtype=np.int32).reshape((-1, 1, 2))        
         mask = np.zeros((height, width), dtype=np.uint8)
         cv2.fillPoly(mask, [polygon], 1)
         mask_3c = np.stack([mask]*3, axis=-1)
