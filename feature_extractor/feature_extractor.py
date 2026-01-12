@@ -58,10 +58,9 @@ class YouTube8MFeatureExtractor(object):
   then call `extractor.extract_rgb_frame_features(im)`
   """
 
-  def __init__(self, model_dir=MODEL_DIR, gpu_id=0):
+  def __init__(self, model_dir=MODEL_DIR):
     # Create MODEL_DIR if not created.
     self._model_dir = model_dir
-    self.gpu_id = gpu_id
     if not os.path.exists(model_dir):
       os.makedirs(model_dir)
 
@@ -98,7 +97,7 @@ class YouTube8MFeatureExtractor(object):
     """
     assert len(frame_rgb.shape) == 3
     assert frame_rgb.shape[2] == 3  # 3 channels (R, G, B)
-    with self._inception_graph.as_default(), tf.device(f"/GPU:{self.gpu_id}"):
+    with self._inception_graph.as_default():
       if apply_pca:
         frame_features = self.session.run(
             'pca_final_feature:0', feed_dict={'DecodeJpeg:0': frame_rgb})
@@ -148,7 +147,7 @@ class YouTube8MFeatureExtractor(object):
   def _load_inception(self, proto_file):
     graph_def = tf.compat.v1.GraphDef.FromString(open(proto_file, 'rb').read())
     self._inception_graph = tf.Graph()
-    with self._inception_graph.as_default(), tf.device(f"/GPU:{self.gpu_id}"):
+    with self._inception_graph.as_default():
       _ = tf.import_graph_def(graph_def, name='')
       self.session = tf.compat.v1.Session()
       Frame_Features = self.session.graph.get_tensor_by_name(

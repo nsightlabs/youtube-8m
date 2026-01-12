@@ -287,8 +287,8 @@ def process_video_file(video_file, labels, extractor_dict, even):
 def main(unused_argv):
   writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
   extractor_dict = {
-    'even': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir, gpu_id=0),
-    'odd': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir, gpu_id=1)
+    'even': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
+    'odd': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
   }
   # extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
   
