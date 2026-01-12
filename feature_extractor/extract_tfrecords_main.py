@@ -33,6 +33,7 @@ import feature_extractor
 import numpy
 import numpy as np
 import tensorflow as tf
+from concurrent.futures import ThreadPoolExecutor, as_completed
 # from tensorflow import app
 # from tensorflow import flags
 from tqdm import tqdm
@@ -153,15 +154,79 @@ def quantize(features, min_quantized_value=-2.0, max_quantized_value=2.0):
   return _make_bytes(features)
 
 
-def main(unused_argv):
-  extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
-  writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
-  total_written = 0
-  total_error = 0
+# def main(unused_argv):
+#   extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
+#   writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
+#   total_written = 0
+#   total_error = 0
   
-  with open(FLAGS.input_videos_csv) as f:
-    csv_lines = list(csv.reader(f))
-  for video_file, labels in tqdm(csv_lines, desc="Processing videos"):
+#   with open(FLAGS.input_videos_csv) as f:
+#     csv_lines = list(csv.reader(f))
+#   for video_file, labels in tqdm(csv_lines, desc="Processing videos"):
+#     rgb_features = []
+#     sum_rgb_features = None
+#     for rgb in frame_iterator(
+#         video_file, every_ms=1000.0 / FLAGS.frames_per_second):
+      
+#       if FLAGS.polygon is not None:        
+#         height, width = rgb.shape[:2]
+#         polygon_coords = list(map(float, FLAGS.polygon.split()))
+#         polygon = np.array(polygon_coords, dtype=np.int32).reshape((-1, 1, 2))        
+#         mask = np.zeros((height, width), dtype=np.uint8)
+#         cv2.fillPoly(mask, [polygon], 1)
+#         mask_3c = np.stack([mask]*3, axis=-1)
+#         rgb = rgb * mask_3c
+        
+#       features = extractor.extract_rgb_frame_features(rgb[:, :, ::-1])
+#       if sum_rgb_features is None:
+#         sum_rgb_features = features
+#       else:
+#         sum_rgb_features += features
+#       rgb_features.append(_bytes_feature(quantize(features)))
+
+#     if not rgb_features:
+#       print >> sys.stderr, 'Could not get features for ' + video_file
+#       total_error += 1
+#       continue
+
+#     mean_rgb_features = sum_rgb_features / len(rgb_features)
+
+#     # Create SequenceExample proto and write to output.
+#     feature_list = {
+#         FLAGS.image_feature_key: tf.train.FeatureList(feature=rgb_features),
+#     }
+#     context_features = {
+#         FLAGS.labels_feature_key:
+#             _int64_list_feature(sorted(map(int, labels.split(';')))),
+#         FLAGS.video_file_feature_key:
+#             _bytes_feature(_make_bytes(map(ord, video_file))),
+#         'mean_' + FLAGS.image_feature_key:
+#             tf.train.Feature(
+#                 float_list=tf.train.FloatList(value=mean_rgb_features)),
+#     }
+
+#     if FLAGS.insert_zero_audio_features:
+#       zero_vec = [0] * 128
+#       feature_list['audio'] = tf.train.FeatureList(
+#           feature=[_bytes_feature(_make_bytes(zero_vec))] * len(rgb_features))
+#       context_features['mean_audio'] = tf.train.Feature(
+#           float_list=tf.train.FloatList(value=zero_vec))
+
+#     if FLAGS.skip_frame_level_features:
+#       example = tf.train.SequenceExample(
+#           context=tf.train.Features(feature=context_features))
+#     else:
+#       example = tf.train.SequenceExample(
+#           context=tf.train.Features(feature=context_features),
+#           feature_lists=tf.train.FeatureLists(feature_list=feature_list))
+#     writer.write(example.SerializeToString())
+#     total_written += 1
+
+#   writer.close()
+#   print('Successfully encoded %i out of %i videos' %
+#         (total_written, total_written + total_error))
+  
+def process_video_file(video_file, labels, extractor):
     rgb_features = []
     sum_rgb_features = None
     for rgb in frame_iterator(
@@ -182,14 +247,12 @@ def main(unused_argv):
       else:
         sum_rgb_features += features
       rgb_features.append(_bytes_feature(quantize(features)))
-
+      
     if not rgb_features:
-      print >> sys.stderr, 'Could not get features for ' + video_file
-      total_error += 1
-      continue
+      return None
 
     mean_rgb_features = sum_rgb_features / len(rgb_features)
-
+    
     # Create SequenceExample proto and write to output.
     feature_list = {
         FLAGS.image_feature_key: tf.train.FeatureList(feature=rgb_features),
@@ -218,13 +281,36 @@ def main(unused_argv):
       example = tf.train.SequenceExample(
           context=tf.train.Features(feature=context_features),
           feature_lists=tf.train.FeatureLists(feature_list=feature_list))
-    writer.write(example.SerializeToString())
-    total_written += 1
+    return example
+    
+    
+def main(unused_argv):
+  extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
+  writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
+  
+  total_written = 0
+  total_error = 0
+  
+  with open(FLAGS.input_videos_csv) as f:
+    csv_lines = list(csv.reader(f))
+    
+  with ThreadPoolExecutor() as executor:
+    futures = [
+        executor.submit(process_video_file, video_file, labels, extractor)
+        for video_file, labels in csv_lines
+    ]
 
-  writer.close()
-  print('Successfully encoded %i out of %i videos' %
-        (total_written, total_written + total_error))
+    for future in tqdm(as_completed(futures),
+                        total=len(futures),
+                        desc="Processing videos"):
 
+      example = future.result()
+      if example is None:
+        total_error += 1
+        continue
 
+      writer.write(example.SerializeToString())
+      total_written += 1
+  
 if __name__ == '__main__':
   app.run(main)
