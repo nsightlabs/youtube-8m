@@ -226,9 +226,10 @@ def quantize(features, min_quantized_value=-2.0, max_quantized_value=2.0):
 #   print('Successfully encoded %i out of %i videos' %
 #         (total_written, total_written + total_error))
   
-def process_video_file(video_file, labels, extractor_dict, even):
+def process_video_file(video_file, labels, extractor_dict, i):
     rgb_features = []
     sum_rgb_features = None
+    extractor = extractor_dict[i % 4]
     for rgb in frame_iterator(
         video_file, every_ms=1000.0 / FLAGS.frames_per_second):
       
@@ -241,7 +242,7 @@ def process_video_file(video_file, labels, extractor_dict, even):
         mask_3c = np.stack([mask]*3, axis=-1)
         rgb = rgb * mask_3c
         
-      features = extractor_dict[("even" if even else "odd")].extract_rgb_frame_features(rgb[:, :, ::-1])
+      features = extractor.extract_rgb_frame_features(rgb[:, :, ::-1])
       if sum_rgb_features is None:
         sum_rgb_features = features
       else:
@@ -287,10 +288,12 @@ def process_video_file(video_file, labels, extractor_dict, even):
 def main(unused_argv):
   writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
   extractor_dict = {
-    'even': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
-    'odd': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
+    0 :feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
+    1: feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
+    2: feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
+    3: feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
   }
-  # extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
+  extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
   
   total_written = 0
   total_error = 0
@@ -298,9 +301,9 @@ def main(unused_argv):
   with open(FLAGS.input_videos_csv) as f:
     csv_lines = list(csv.reader(f))
     
-  with ThreadPoolExecutor(max_workers=2) as executor:
+  with ThreadPoolExecutor(max_workers=4) as executor:
     futures = [
-        executor.submit(process_video_file, video_file, labels, extractor_dict, i % 2)
+        executor.submit(process_video_file, video_file, labels, extractor_dict, i)
         for i, (video_file, labels) in enumerate(csv_lines)
     ]
 
