@@ -226,8 +226,7 @@ def quantize(features, min_quantized_value=-2.0, max_quantized_value=2.0):
 #   print('Successfully encoded %i out of %i videos' %
 #         (total_written, total_written + total_error))
   
-def process_video_file(video_file, labels):
-    extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
+def process_video_file(video_file, labels, extractor_dict, even):
     rgb_features = []
     sum_rgb_features = None
     for rgb in frame_iterator(
@@ -242,7 +241,7 @@ def process_video_file(video_file, labels):
         mask_3c = np.stack([mask]*3, axis=-1)
         rgb = rgb * mask_3c
         
-      features = extractor.extract_rgb_frame_features(rgb[:, :, ::-1])
+      features = extractor_dict[("even" if even else "odd")].extract_rgb_frame_features(rgb[:, :, ::-1])
       if sum_rgb_features is None:
         sum_rgb_features = features
       else:
@@ -287,6 +286,11 @@ def process_video_file(video_file, labels):
     
 def main(unused_argv):
   writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
+  extractor_dict = {
+    'even': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir, gpu_id=0),
+    'odd': feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir, gpu_id=1)
+  }
+  # extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
   
   total_written = 0
   total_error = 0
@@ -294,10 +298,10 @@ def main(unused_argv):
   with open(FLAGS.input_videos_csv) as f:
     csv_lines = list(csv.reader(f))
     
-  with ThreadPoolExecutor() as executor:
+  with ThreadPoolExecutor(max_workers=2) as executor:
     futures = [
-        executor.submit(process_video_file, video_file, labels)
-        for video_file, labels in csv_lines
+        executor.submit(process_video_file, video_file, labels, extractor_dict, i % 2)
+        for i, (video_file, labels) in enumerate(csv_lines)
     ]
 
     for future in tqdm(as_completed(futures),
