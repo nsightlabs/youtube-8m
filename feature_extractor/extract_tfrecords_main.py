@@ -230,7 +230,7 @@ def quantize(features, min_quantized_value=-2.0, max_quantized_value=2.0):
 def process_video_file(video_file, labels, extractor_dict, i):
     rgb_features = []
     sum_rgb_features = None
-    extractor = extractor_dict[i]
+    extractor = extractor_dict[i % 4]
     for rgb in frame_iterator(
         video_file, every_ms=1000.0 / FLAGS.frames_per_second):
       
@@ -296,8 +296,10 @@ def main(unused_argv):
     csv_lines = list(csv.reader(f))
     
   extractor_dict = {
-    i :feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
-    for i in range(len(csv_lines))
+    0 :feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
+    1: feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
+    2: feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
+    3: feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir),
   }
     
   with ThreadPoolExecutor(max_workers=4) as executor:
