@@ -242,6 +242,7 @@ def process_video_file(video_file, labels, extractor_dict, i):
         mask_3c = np.stack([mask]*3, axis=-1)
         rgb = rgb * mask_3c
         
+      rgb = cv2.resize(rgb, (255, 255))
       features = extractor.extract_rgb_frame_features(rgb[:, :, ::-1])
       if sum_rgb_features is None:
         sum_rgb_features = features
