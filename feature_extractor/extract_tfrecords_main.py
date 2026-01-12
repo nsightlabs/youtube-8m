@@ -226,7 +226,8 @@ def quantize(features, min_quantized_value=-2.0, max_quantized_value=2.0):
 #   print('Successfully encoded %i out of %i videos' %
 #         (total_written, total_written + total_error))
   
-def process_video_file(video_file, labels, extractor):
+def process_video_file(video_file, labels):
+    extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
     rgb_features = []
     sum_rgb_features = None
     for rgb in frame_iterator(
@@ -285,7 +286,6 @@ def process_video_file(video_file, labels, extractor):
     
     
 def main(unused_argv):
-  extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
   writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
   
   total_written = 0
@@ -296,7 +296,7 @@ def main(unused_argv):
     
   with ThreadPoolExecutor() as executor:
     futures = [
-        executor.submit(process_video_file, video_file, labels, extractor)
+        executor.submit(process_video_file, video_file, labels)
         for video_file, labels in csv_lines
     ]
 
